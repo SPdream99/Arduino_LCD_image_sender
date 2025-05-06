@@ -6,7 +6,10 @@ from PIL import Image, ImageSequence
 from ImageToDigit import convert
 from time import sleep, time
 import os
-import math
+import math # Import math for floor
+
+# No longer explicitly using struct, direct byte handling is sufficient
+# import struct
 
 # --- Configuration ---
 # Default Folder containing image sequence or path to a single image/gif
@@ -29,10 +32,10 @@ TARGET_FPS = 30
 # This directly affects the animation speed on the LCD.
 # You can adjust this value directly, or calculate it based on a desired FPS if needed.
 # Example calculation (adjust the denominator 8 based on your hardware's actual max FPS):
-FRAMES_PER_PRINT = math.floor(TARGET_FPS / 8)
-if FRAMES_PER_PRINT < 1:
-    FRAMES_PER_PRINT = 1
-# FRAMES_PER_PRINT = 1 # Set to 1 for maximum speed by default
+# FRAMES_PER_PRINT = math.floor(TARGET_FPS / 8)
+# if FRAMES_PER_PRINT < 1:
+#     FRAMES_PER_PRINT = 1
+FRAMES_PER_PRINT = 1 # Set to 1 for maximum speed by default
 
 # Pixel values for black and white in the generated data (0 or 1)
 BLACK_PIXEL_VALUE = 0
@@ -99,18 +102,57 @@ def install_arduino_sketch(com_port, model):
         print(f"An unexpected error occurred during installation: {e}")
         return False
 
+def show_help():
+    """Prints the help message and usage instructions."""
+    print("\n--- Arduino LCD Animation Script Help ---")
+    print("Usage:")
+    print("  python main.py [path_to_image_or_folder]")
+    print("  Drag and drop an image file or a folder onto the main.py script.")
+    print("  Run from terminal without arguments to use the default FOLDER_PATH.")
+    print("  python main.py --help  or  python main.py -h  to show this help message.")
+    print("\nDescription:")
+    print("  This script converts images/animations into data for a 16x2 character LCD")
+    print("  and sends it to an Arduino over a serial connection.")
+    print("\nConfiguration Options (edit main.py to change):")
+    print(f"  DEFAULT_FOLDER_PATH      : Default image source path ('{DEFAULT_FOLDER_PATH}')")
+    print(f"  COM_PORT                 : Arduino COM port ('{COM_PORT}' or auto-detect)")
+    print(f"  BAUDRATE                 : Serial communication speed ({BAUDRATE})")
+    print(f"  INSTALL_ARDUINO_SKETCH   : Auto-upload sketch ({INSTALL_ARDUINO_SKETCH})")
+    print(f"  ARDUINO_BOARD_MODEL      : Board model for arduino-cli ('{ARDUINO_BOARD_MODEL}')")
+    print(f"  TARGET_FPS               : Theoretical FPS for reporting ({TARGET_FPS})")
+    print(f"  FRAMES_PER_PRINT         : Frame skipping factor ({FRAMES_PER_PRINT})")
+    print(f"  BLACK_PIXEL_VALUE        : Value for black pixels ({BLACK_PIXEL_VALUE})")
+    print(f"  WHITE_PIXEL_VALUE        : Value for white pixels ({WHITE_PIXEL_VALUE})")
+    print(f"  COLOR_BINARIZATION_THRESHOLD: Binarization threshold ({COLOR_BINARIZATION_THRESHOLD})")
+    print(f"  LOOP_ANIMATION           : Loop animation ({LOOP_ANIMATION})")
+    print(f"  ENABLE_PRINTOUT          : Enable console image printout ({ENABLE_PRINTOUT})")
+    print(f"  AUTO_LOAD_SCRIPT         : Load from script file ({AUTO_LOAD_SCRIPT})")
+    print(f"  START_FRAME_INDEX        : Starting frame index ({START_FRAME_INDEX})")
+    print(f"  END_FRAME_INDEX          : Ending frame index ({END_FRAME_INDEX})")
+    print("\nAnimation Control:")
+    print("  Press Ctrl+C in the terminal to stop the animation.")
+    print("  In the idle state, press Enter to exit the script.")
+    print("\n-----------------------------------------")
+
+
 # --- Main Execution ---
 if __name__ == '__main__':
     # Hide the cursor in the terminal for cleaner output
-    sys.stdout.write("\033[?25l")
-    sys.stdout.flush()  # Ensure the change is applied immediately
+    # sys.stdout.write("\033[?25l") # Keep cursor visible for input() in idle state
+    # sys.stdout.flush()  # Ensure the change is applied immediately
 
-    # --- Handle Drag and Drop / Command Line Arguments ---
+    # --- Handle Command Line Arguments (including help) ---
+    # Check for help flag first
+    if "--help" in sys.argv or "-h" in sys.argv:
+        show_help()
+        sys.exit(0) # Exit after showing help
+
     # Check if a command-line argument (dragged file/folder path) is provided
     if len(sys.argv) > 1:
+        # Use the first argument as the FOLDER_PATH
         FOLDER_PATH = sys.argv[1]
-        print(f"Using path from drag and drop: {FOLDER_PATH}")
-        # If using drag and drop, you might want to disable auto_load_script
+        print(f"Using path from command line argument: {FOLDER_PATH}")
+        # If using command line argument, you might want to disable auto_load_script
         # as you are likely providing a new source. Uncomment the line below if needed.
         # AUTO_LOAD_SCRIPT = False
     else:
@@ -122,7 +164,8 @@ if __name__ == '__main__':
     # --- Initial Path Validation ---
     if not os.path.exists(FOLDER_PATH):
         print(f"Error: Specified folder or file '{FOLDER_PATH}' not found.")
-        sys.stdout.write("\033[?25h")  # Show cursor before exiting
+        # Show cursor before exiting
+        sys.stdout.write("\033[?25h")
         sys.stdout.flush()
         sys.exit(1)  # Exit with an error code
 
@@ -137,14 +180,16 @@ if __name__ == '__main__':
             ports = list(serial.tools.list_ports.comports())
             for p in ports:
                 print(f"- {p.device}: {p.description}")
-            sys.stdout.write("\033[?25h")  # Show cursor before exiting
+            # Show cursor before exiting
+            sys.stdout.write("\033[?25h")
             sys.stdout.flush()
             sys.exit(1)  # Exit with an error code
 
     # --- Arduino Sketch Installation ---
     if INSTALL_ARDUINO_SKETCH:
         if not install_arduino_sketch(COM_PORT, ARDUINO_BOARD_MODEL):
-            sys.stdout.write("\033[?25h")  # Show cursor before exiting
+            # Show cursor before exiting
+            sys.stdout.write("\033[?25h")
             sys.stdout.flush()
             sys.exit(1)  # Exit with an error code
 
@@ -154,14 +199,14 @@ if __name__ == '__main__':
     # Replace invalid characters for filenames if necessary
     script_file_name = os.path.basename(FOLDER_PATH)
     # Simple sanitization (more robust handling might be needed for complex paths)
-    script_file_name = "".join([c for c in script_file_name if c.isalnum() or c in (' ', '.', '_')]).rstrip()
+    script_file_name = "".join([c for c in script_file_name if c.isalnum() or c in (' ', '.', '_', '-')]).rstrip() # Added hyphen
     if not script_file_name:
         script_file_name = "default_script" # Fallback name if sanitization results in empty string
 
     script_file_path = os.path.join("Scripts", f"{script_file_name}.bin")
 
 
-    if AUTO_LOAD_SCRIPT:
+    if AUTO_LOAD_SCRIPT and os.path.exists(script_file_path): # Check if script file exists when auto_load is True
         print(f"Attempting to load frames from script file: {script_file_path}")
         try:
             with open(script_file_path, "rb") as f:  # Open in read binary mode
@@ -187,17 +232,24 @@ if __name__ == '__main__':
                  print(f"Successfully loaded {len(processed_frames)} frames from {script_file_path}.")
 
         except FileNotFoundError:
-            print(f"Script file not found: {script_file_path}. Set AUTO_LOAD_SCRIPT = False to process images.")
-            sys.stdout.write("\033[?25h")  # Show cursor before exiting
+            # This should ideally not happen with the os.path.exists check, but keeping for robustness
+            print(f"Script file not found during loading: {script_file_path}. Set AUTO_LOAD_SCRIPT = False to process images.")
+            # Show cursor before exiting
+            sys.stdout.write("\033[?25h")
             sys.stdout.flush()
             sys.exit(1)  # Exit with an error code
         except Exception as e:
             print(f"Error loading script file: {e}")
-            sys.stdout.write("\033[?25h")  # Show cursor before exiting
+            # Show cursor before exiting
+            sys.stdout.write("\033[?25h")
             sys.stdout.flush()
             sys.exit(1)  # Exit with an error code
 
     else:  # Process images and potentially save to script file
+        # If auto_load is True but file doesn't exist, or auto_load is False
+        if AUTO_LOAD_SCRIPT and not os.path.exists(script_file_path):
+             print(f"Script file not found: {script_file_path}. Processing images instead.")
+
         print("Processing images...")
         # Ensure the Scripts directory exists
         os.makedirs("Scripts", exist_ok=True)
@@ -303,7 +355,8 @@ if __name__ == '__main__':
 
     if not processed_frames:
         print("No frames available to send. Exiting.")
-        sys.stdout.write("\033[?25h")  # Show cursor before exiting
+        # Show cursor before exiting
+        sys.stdout.write("\033[?25h")
         sys.stdout.flush()
         sys.exit(1)  # Exit with an error code
 
@@ -315,14 +368,16 @@ if __name__ == '__main__':
         sleep(2)  # Adjust this delay if needed
     except serial.SerialException as e:
         print(f"Failed to connect to Arduino on {COM_PORT}: {e}")
-        sys.stdout.write("\033[?25h")  # Show cursor before exiting
+        # Show cursor before exiting
+        sys.stdout.write("\033[?25h")
         sys.stdout.flush()
         sys.exit(1)  # Exit with an error code
 
 
     if not ser or not ser.is_open:  # Check if ser is not None and is open
         print("Failed to open serial port.")
-        sys.stdout.write("\033[?25h")  # Show cursor before exiting
+        # Show cursor before exiting
+        sys.stdout.write("\033[?25h")
         sys.stdout.flush()
         sys.exit(1)  # Exit with an error code
 
@@ -449,6 +504,7 @@ if __name__ == '__main__':
         print("Serial port was already closed or not opened.")
 
     # Show the cursor again in the terminal
-    sys.stdout.write("\033[0m\033[?25h")
+    # Re-enable cursor before exiting
+    sys.stdout.write("\033[?25h")
     sys.stdout.flush()
     sys.exit(0)  # Exit successfully
