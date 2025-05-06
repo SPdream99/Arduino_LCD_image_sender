@@ -1,4 +1,3 @@
-import math
 import sys
 import serial.tools.list_ports
 import serial
@@ -7,13 +6,12 @@ from PIL import Image, ImageSequence
 from ImageToDigit import convert
 from time import sleep, time
 import os
-
-# No longer explicitly using struct, direct byte handling is sufficient
-# import struct
+import math
 
 # --- Configuration ---
-# Folder containing image sequence or path to a single image/gif
-FOLDER_PATH = "Bad Apple"
+# Default Folder containing image sequence or path to a single image/gif
+# This will be overridden if a file or folder is dragged and dropped onto the script
+DEFAULT_FOLDER_PATH = "Bad Apple"
 # COM port for Arduino (leave empty to auto-detect common boards)
 COM_PORT = ""
 # Serial baud rate (must match Arduino sketch)
@@ -29,9 +27,12 @@ TARGET_FPS = 30
 # Frames Per Print: controls how many frames are SKIPPED between each frame that is SENT to the Arduino.
 # Setting FRAMES_PER_PRINT to N means only every Nth frame (0, N, 2N, ...) is sent.
 # This directly affects the animation speed on the LCD.
-FRAMES_PER_PRINT = math.floor(TARGET_FPS/8)    # Example: send every 2nd frame (0, 2, 4...)
+# You can adjust this value directly, or calculate it based on a desired FPS if needed.
+# Example calculation (adjust the denominator 8 based on your hardware's actual max FPS):
+FRAMES_PER_PRINT = math.floor(TARGET_FPS / 8)
 if FRAMES_PER_PRINT < 1:
     FRAMES_PER_PRINT = 1
+# FRAMES_PER_PRINT = 1 # Set to 1 for maximum speed by default
 
 # Pixel values for black and white in the generated data (0 or 1)
 BLACK_PIXEL_VALUE = 0
@@ -104,6 +105,27 @@ if __name__ == '__main__':
     sys.stdout.write("\033[?25l")
     sys.stdout.flush()  # Ensure the change is applied immediately
 
+    # --- Handle Drag and Drop / Command Line Arguments ---
+    # Check if a command-line argument (dragged file/folder path) is provided
+    if len(sys.argv) > 1:
+        FOLDER_PATH = sys.argv[1]
+        print(f"Using path from drag and drop: {FOLDER_PATH}")
+        # If using drag and drop, you might want to disable auto_load_script
+        # as you are likely providing a new source. Uncomment the line below if needed.
+        # AUTO_LOAD_SCRIPT = False
+    else:
+        # Use the default path from configuration if no argument is provided
+        FOLDER_PATH = DEFAULT_FOLDER_PATH
+        print(f"Using default folder path: {FOLDER_PATH}")
+
+
+    # --- Initial Path Validation ---
+    if not os.path.exists(FOLDER_PATH):
+        print(f"Error: Specified folder or file '{FOLDER_PATH}' not found.")
+        sys.stdout.write("\033[?25h")  # Show cursor before exiting
+        sys.stdout.flush()
+        sys.exit(1)  # Exit with an error code
+
     # --- COM Port Setup ---
     if COM_PORT == "":
         COM_PORT = auto_detect_com_port()
@@ -129,7 +151,13 @@ if __name__ == '__main__':
     # --- File/Folder Handling and Frame Processing ---
     processed_frames = []
     # Use base name for script file to handle both folder and single file cases
+    # Replace invalid characters for filenames if necessary
     script_file_name = os.path.basename(FOLDER_PATH)
+    # Simple sanitization (more robust handling might be needed for complex paths)
+    script_file_name = "".join([c for c in script_file_name if c.isalnum() or c in (' ', '.', '_')]).rstrip()
+    if not script_file_name:
+        script_file_name = "default_script" # Fallback name if sanitization results in empty string
+
     script_file_path = os.path.join("Scripts", f"{script_file_name}.bin")
 
 
