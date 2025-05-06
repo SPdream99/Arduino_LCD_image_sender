@@ -3,3 +3,5 @@
 ./.git
 ./Scripts/*
 ./Test
+./dist
+./main.spec
