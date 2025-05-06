@@ -5,6 +5,7 @@ from time import sleep
 # from collections.abc import Iterable
 
 from PIL import Image
+
 # No longer need ImageStat for this approach
 # from PIL import ImageStat
 
@@ -25,14 +26,15 @@ CHAR_WIDTH_PX = 5
 CHAR_HEIGHT_PX = 8
 
 # Number of custom characters needed horizontally and vertically
-CHARS_HORIZONTAL = LCD_WIDTH_PX // CHAR_WIDTH_PX # Should be 4
-CHARS_VERTICAL = LCD_HEIGHT_PX // CHAR_HEIGHT_PX   # Should be 2
+CHARS_HORIZONTAL = LCD_WIDTH_PX // CHAR_WIDTH_PX  # Should be 4
+CHARS_VERTICAL = LCD_HEIGHT_PX // CHAR_HEIGHT_PX  # Should be 2
 
 # Total number of custom characters
-TOTAL_CHARS = CHARS_HORIZONTAL * CHARS_VERTICAL # Should be 8
+TOTAL_CHARS = CHARS_HORIZONTAL * CHARS_VERTICAL  # Should be 8
 
 # Total number of bytes required for all custom characters (8 bytes per character)
-TOTAL_BYTES_PER_FRAME = TOTAL_CHARS * CHAR_HEIGHT_PX # Should be 64
+TOTAL_BYTES_PER_FRAME = TOTAL_CHARS * CHAR_HEIGHT_PX  # Should be 64
+
 
 # --- Helper Function ---
 def calculate_mean_grayscale(pixels):
@@ -46,8 +48,9 @@ def calculate_mean_grayscale(pixels):
         int: The calculated mean intensity, or 128 if the list is empty.
     """
     if not pixels:
-        return 128 # Default to a mid-range threshold if no pixels
+        return 128  # Default to a mid-range threshold if no pixels
     return int(sum(pixels) / len(pixels))
+
 
 # --- Main Conversion Function ---
 def image_to_lcd_bytes(img, printout=False, black=BLACK, white=WHITE, color_check=DEFAULT_COLOR_CHECK):
@@ -94,19 +97,19 @@ def image_to_lcd_bytes(img, printout=False, black=BLACK, white=WHITE, color_chec
         # --- Console Printout (Optional) ---
         if printout:
             # Use ANSI escape codes for clearing and positioning cursor
-            sys.stdout.write("\033[0J\033[H") # Clear screen and move cursor to home
+            sys.stdout.write("\033[0J\033[H")  # Clear screen and move cursor to home
             for y in range(LCD_HEIGHT_PX):
-                sys.stdout.write("\033[0K") # Clear line from cursor to end
+                sys.stdout.write("\033[0K")  # Clear line from cursor to end
                 for x in range(LCD_WIDTH_PX):
                     # Use ANSI escape codes for colored output
                     pixel_index = y * LCD_WIDTH_PX + x
                     color_code = f'\033[37;47m ' if pixels_binary[pixel_index] == white else f'\033[30;40m '
                     sys.stdout.write(color_code)
-                    sys.stdout.write(f'\033[m') # Reset colors
-                sys.stdout.write('\n') # Move to the next line
+                    sys.stdout.write(f'\033[m')  # Reset colors
+                sys.stdout.write('\n')  # Move to the next line
                 if y == LCD_HEIGHT_PX - 1:
-                    sleep(1/144) # Small delay for visualization (adjust if needed)
-            sys.stdout.flush() # Ensure output is displayed
+                    sleep(1 / 144)  # Small delay for visualization (adjust if needed)
+            sys.stdout.flush()  # Ensure output is displayed
 
         # --- Generate LCD Custom Character Bytes ---
         # List to hold all 64 bytes for the 8 custom characters
@@ -132,7 +135,7 @@ def image_to_lcd_bytes(img, printout=False, black=BLACK, white=WHITE, color_chec
 
                     # Get the pixel value (0 or 1) from the binary pixel list
                     pixel_index = global_y * LCD_WIDTH_PX + global_x
-                    bit = pixels_binary[pixel_index] # The pixel value (0 or 1) is directly the bit value
+                    bit = pixels_binary[pixel_index]  # The pixel value (0 or 1) is directly the bit value
 
                     # The 5 pixels occupy the lower 5 bits of the byte (bits 0-4)
                     # Bit 4 is the leftmost pixel, Bit 0 is the rightmost
@@ -144,8 +147,9 @@ def image_to_lcd_bytes(img, printout=False, black=BLACK, white=WHITE, color_chec
 
         # Ensure we generated the correct number of bytes
         if len(all_char_bytes) != TOTAL_BYTES_PER_FRAME:
-             print(f"Warning: Generated incorrect number of bytes: {len(all_char_bytes)}. Expected {TOTAL_BYTES_PER_FRAME}.")
-             return None
+            print(
+                f"Warning: Generated incorrect number of bytes: {len(all_char_bytes)}. Expected {TOTAL_BYTES_PER_FRAME}.")
+            return None
 
         # Return the list of 64 bytes
         return all_char_bytes
@@ -154,6 +158,7 @@ def image_to_lcd_bytes(img, printout=False, black=BLACK, white=WHITE, color_chec
         print(f"An error occurred during image processing: {e}")
         return None
 
+
 # --- Wrapper Function ---
 def convert(image_file, printout=False, black=BLACK, white=WHITE, color_check=DEFAULT_COLOR_CHECK):
     """
@@ -161,4 +166,3 @@ def convert(image_file, printout=False, black=BLACK, white=WHITE, color_check=DE
     Handles potential errors during the conversion process.
     """
     return image_to_lcd_bytes(image_file, printout, black, white, color_check)
-
