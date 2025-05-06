@@ -1,8 +1,11 @@
 import os
 import sys
 from time import sleep
+from collections.abc import Iterable
+
 
 from PIL import Image
+from numpy.ma.extras import average
 
 # 1 will make square lighten
 BLACK = 0
@@ -30,6 +33,14 @@ def image_to_lcd_decimal_string(img, printout=False, black=BLACK, white=WHITE, c
 
         # Get pixel data
         def check(color, lim=100):
+            if lim == -1:
+                if isinstance(color, Iterable):
+                    lim = average(color)
+                    if lim < 1:
+                        lim = 1
+                    lim = 240/lim
+                else:
+                    lim = 100
             b = False
             if type(color) is int:
                 return color > lim

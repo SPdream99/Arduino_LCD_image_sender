@@ -8,8 +8,10 @@ from ImageToDigit import convert
 from time import sleep, time
 import os
 
+folder = "Bad Apple"    # Folder or file
+
 COM = ""
-BAUDRATE = 500000  # The higher, the faster. the highest I've tested on UNO R3 was 500000
+BAUDRATE = 500000  # The higher, the faster. I've tested on UNO R3 the highest was 500000, unstable
 install = False
 model = "arduino:avr:uno"
 
@@ -18,12 +20,11 @@ FPP = math.floor(FPS/((BAUDRATE*7.5)/500000))   # Frame advance per print, visua
 FPP = 1 if FPP < 1 else FPP
 BLACK = 0
 WHITE = 1
-COLOR_CHECK = 77   # The higher, the less White you will see
+COLOR_CHECK = 240   # The higher, the less White you will see, -1 for auto
 LOOP = True
 printout = False
 
-auto_load = False
-folder = "Bad Apple"    # Folder or file
+auto_load = False   # Load from pre-built Script
 
 # File params
 start = 0   # Does nothing, implant later
@@ -87,11 +88,13 @@ if __name__ == '__main__':
                             if a:
                                 f.write(a)
                                 f.write("\n")
+                        f.close()
                     else:
                         a = convert(im, printout, BLACK, WHITE, COLOR_CHECK)
                         if a:
                             f.write(a)
                             f.write("\n")
+                        f.close()
 
         while ser.is_open:
             i = 0
