@@ -13,18 +13,21 @@ WHITE = 1
 COLOR_CHECK = 150
 
 
-def image_to_lcd_decimal_string(img, printout=False, black=BLACK, white=WHITE, color_check=COLOR_CHECK):
+def image_to_lcd_bytes(img, printout=False, black=BLACK, white=WHITE, color_check=COLOR_CHECK):
     """
     Resizes an image to 20x16, converts it to black and white, and generates
-    a single string of concatenated decimal values for 8 LCD custom characters
-    (5x8 pixels each).
+    a list of 64 bytes for 8 LCD custom characters (5x8 pixels each).
 
     Args:
-        image_path (str): The path to the input image file.
+        img (PIL.Image.Image): The input image object.
+        printout (bool): Whether to print a text representation of the image.
+        black (int): Value for black pixels.
+        white (int): Value for white pixels.
+        color_check (int): Threshold for determining black/white pixels.
 
     Returns:
-        str: A string containing the concatenated decimal values of the 64 bytes,
-             or None if an error occurs.
+        list: A list of 64 integers (bytes) representing the custom character data,
+              or None if an error occurs.
     """
     try:
 
@@ -51,7 +54,7 @@ def image_to_lcd_decimal_string(img, printout=False, black=BLACK, white=WHITE, c
                 b = False
             return b
 
-        # print(list(img_resized.getdata()))
+        # Convert pixels to black or white based on the color_check threshold
         pixels = list(map(lambda x: white if check(x, color_check) else black, list(img_resized.getdata())))
 
         # The 20x16 image will be divided into 8 custom characters (5x8 each)
@@ -71,14 +74,16 @@ def image_to_lcd_decimal_string(img, printout=False, black=BLACK, white=WHITE, c
                 if i == 15:
                     sleep(1/144)
         else:
-            print("\033[sProcessing image...\033[u", end="")
+            # Use ANSI escape codes to indicate processing without clearing the screen
+            sys.stdout.write("\033[sProcessing image...\033[u")
+            sys.stdout.flush() # Ensure the output is displayed immediately
 
-        decimal_string = ""
+
+        # List to hold all 64 bytes for the 8 custom characters
+        all_char_bytes = []
 
         # Iterate through the 8 custom characters
         for char_index in range(8):
-            char_data = []  # List to hold 8 bytes for the current character
-
             # Determine the starting pixel coordinates for this character block
             # Each character is 5 pixels wide and 8 pixels tall
             # There are 4 characters horizontally and 2 vertically
@@ -97,9 +102,7 @@ def image_to_lcd_decimal_string(img, printout=False, black=BLACK, white=WHITE, c
                     global_x = start_x + col_in_char
                     global_y = start_y + row_in_char
 
-                    # Get the pixel value (0 or 255)
-                    # We need to map 0 (black) to 1 and 255 (white) to 0
-                    # for the LCD custom character data
+                    # Get the pixel value (0 or 1)
                     pixel_value = pixels[global_y * 20 + global_x]
                     bit = pixel_value
 
@@ -108,15 +111,11 @@ def image_to_lcd_decimal_string(img, printout=False, black=BLACK, white=WHITE, c
                     # So, pixel at col_in_char 0 goes to bit 4, col_in_char 1 to bit 3, etc.
                     byte_value |= (bit << (4 - col_in_char))
 
-                char_data.append(byte_value)
+                # Append the calculated byte value for the current row
+                all_char_bytes.append(byte_value)
 
-            # Convert the 8 bytes for the character to decimal strings and concatenate
-            for byte_value in char_data:
-                if byte_value < 10:
-                    byte_value = "0" + str(byte_value)
-                decimal_string += str(byte_value)  # Convert integer to decimal string and append
-
-        return decimal_string
+        # Return the list of 64 bytes
+        return all_char_bytes
 
     except Exception as e:
         print(f"An error occurred: {e}")
@@ -124,7 +123,12 @@ def image_to_lcd_decimal_string(img, printout=False, black=BLACK, white=WHITE, c
 
 
 def convert(image_file, printout=False, black=BLACK, white=WHITE, color_check=COLOR_CHECK):
+    """
+    Wrapper function to convert an image to LCD character bytes.
+    """
     try:
-        return image_to_lcd_decimal_string(image_file, printout, black, white, color_check)
-    except:
-        return
+        return image_to_lcd_bytes(image_file, printout, black, white, color_check)
+    except Exception as e:
+        print(f"Conversion error: {e}")
+        return None
+
